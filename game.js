@@ -1,4 +1,4 @@
-// Basic 3D obstacle dodger using Three.js
+// 3D obstacle dodger with levels and scoring using Three.js
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(
   75,
@@ -21,6 +21,15 @@ scene.add(player);
 
 camera.position.z = 5;
 
+const scoreEl = document.getElementById('score');
+const levelEl = document.getElementById('level');
+
+let score = 0;
+let level = 1;
+let spawnRate = 1000;
+let obstacleSpeed = 0.2;
+let spawnIntervalId;
+
 const obstacles = [];
 function spawnObstacle() {
   const geometry = new THREE.BoxGeometry(1, 1, 1);
@@ -32,14 +41,45 @@ function spawnObstacle() {
   scene.add(obstacle);
   obstacles.push(obstacle);
 }
-setInterval(spawnObstacle, 1000);
+
+function startSpawning() {
+  clearInterval(spawnIntervalId);
+  spawnIntervalId = setInterval(spawnObstacle, spawnRate);
+}
+
+function setLevel(newLevel) {
+  level = newLevel;
+  levelEl.textContent = level;
+  if (level === 1) {
+    spawnRate = 1000;
+    obstacleSpeed = 0.2;
+  } else if (level === 2) {
+    spawnRate = 700;
+    obstacleSpeed = 0.3;
+  } else if (level === 3) {
+    spawnRate = 500;
+    obstacleSpeed = 0.4;
+  }
+  startSpawning();
+}
+
+setLevel(1);
 
 const keys = {};
-window.addEventListener('keydown', (e) => (keys[e.key] = true));
+let paused = false;
+
+window.addEventListener('keydown', (e) => {
+  if (e.key === 'p' || e.key === 'P') {
+    paused = !paused;
+    return;
+  }
+  keys[e.key] = true;
+});
 window.addEventListener('keyup', (e) => (keys[e.key] = false));
 
 function animate() {
   requestAnimationFrame(animate);
+  if (paused) return;
 
   if (keys['ArrowLeft'] || keys['a'] || keys['A']) player.position.x -= 0.1;
   if (keys['ArrowRight'] || keys['d'] || keys['D']) player.position.x += 0.1;
@@ -48,13 +88,17 @@ function animate() {
 
   for (let i = obstacles.length - 1; i >= 0; i--) {
     const o = obstacles[i];
-    o.position.z += 0.2;
+    o.position.z += obstacleSpeed;
 
     if (o.position.z > camera.position.z) {
       scene.remove(o);
       obstacles.splice(i, 1);
+      score++;
+      scoreEl.textContent = score;
+      if (score === 20) setLevel(2);
+      else if (score === 50) setLevel(3);
     } else if (o.position.distanceTo(player.position) < 1) {
-      alert('Game Over! Refresh to try again.');
+      alert(`Game Over! Final score: ${score}. Refresh to try again.`);
       window.location.reload();
       return;
     }
